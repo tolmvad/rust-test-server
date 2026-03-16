@@ -1,5 +1,13 @@
 # Test command
 
+# Check server run
+
+```bash
+curl <server>
+```
+
+# Run benchmark
+
 ```bash
 wrk -t 8 -c 100 -d 20s <server>
 ```

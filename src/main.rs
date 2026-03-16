@@ -1,29 +1,44 @@
 use axum::{
+    Json,
     routing::get,
     Router,
 };
 use std::net::SocketAddr;
 use tokio::net::TcpListener;
-use tracing_subscriber;
+use serde::Serialize;
 
-// a basic handler function that returns a static string
-async fn hello_world() -> &'static str {
-    "Hello, world!\n"
+// Обработчик для корня
+async fn server_welcome() -> &'static str {
+    "Welcome to the Rust test server!
+        Rust + Axum + Tokio\n"
+}
+
+#[derive(Serialize)]
+struct JsonResponse {
+    message: &'static str,
+}
+
+// Обработчик для вызова /json
+async fn server_json() -> Result<Json<JsonResponse>, axum::http::StatusCode> {
+    Ok(Json(JsonResponse {
+        message: "Message to JSON Response",
+    }))
 }
 
 #[tokio::main]
 async fn main() {
-    // initialize tracing for logging
-    tracing_subscriber::fmt::init();
 
-    // build our application with a route
+    // Создание маршрутов
     let app = Router::new()
-        // `GET /` goes to `hello_world` handler
-        .route("/", get(hello_world));
+        // Переходы к обработчикам GET запросов
+        .route("/", get(server_welcome))
+        .route("/json", get(server_json));
 
-    // run our app with hyper, listening globally on port 3000
-    let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
-    let listener = TcpListener::bind(&addr).await.unwrap();
+    // Задаём адрес и порт сервера
+    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     println!("Listening on http://{}", addr);
+
+    // Запуск сервера
+    let listener = TcpListener::bind(&addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }
