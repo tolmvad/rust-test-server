@@ -1,21 +1,18 @@
-use axum::{
-    Json,
-    routing::get,
-    Router,
-};
 use std::net::SocketAddr;
-use tokio::net::TcpListener;
+use tokio::runtime::Builder;
+use axum::{ Json, Router, routing::get };
+use anyhow::Result;
 use serde::Serialize;
+
+#[derive(Serialize)]
+struct JsonResponse {
+    message: &'static str,
+}
 
 // Обработчик для корня
 async fn server_welcome() -> &'static str {
     "Welcome to the Rust test server!
         Rust + Axum + Tokio\n"
-}
-
-#[derive(Serialize)]
-struct JsonResponse {
-    message: &'static str,
 }
 
 // Обработчик для вызова /json
@@ -25,20 +22,27 @@ async fn server_json() -> Result<Json<JsonResponse>, axum::http::StatusCode> {
     }))
 }
 
-#[tokio::main]
-async fn main() {
-
+async fn run() -> Result<()> {
     // Создание маршрутов
     let app = Router::new()
-        // Переходы к обработчикам GET запросов
         .route("/", get(server_welcome))
         .route("/json", get(server_json));
 
     // Задаём адрес и порт сервера
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    let addr: SocketAddr = "127.0.0.1:3000".parse().unwrap();
     println!("Listening on http://{}", addr);
 
     // Запуск сервера
-    let listener = TcpListener::bind(&addr).await.unwrap();
+    let listener = std::net::TcpListener::bind(addr)?;
+    listener.set_nonblocking(true)?;
+    let listener = tokio::net::TcpListener::from_std(listener)?;
     axum::serve(listener, app).await.unwrap();
+    Ok(())
+}
+
+fn main() -> Result<()> {
+    let rt = Builder::new_multi_thread().enable_all().build()?;
+    rt.block_on( async { run().await } )?;
+
+    Ok(())
 }
